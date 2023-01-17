@@ -237,6 +237,7 @@ sol_KD2 = solve_ivp(odes2, [t_DKD, -1.e5], y0_DKD, method='Radau', events=BBstar
 sol_KD3 = solve_ivp(odes2, [t_DKD, 1.e8], y0_DKD, method='Radau', events=inflating)
 
 print('b, b_dot='+str(sol_KD3.y[5][-1])+','+str(sol_KD3.y[6][-1]))
+
 """
 # Combine solutions of KD and inflation together
 t_tot = np.concatenate((np.flipud(sol_KD.t), sol_inf.t), axis=0)
@@ -264,6 +265,7 @@ for i in range(len(t_tot)):
     #log_b.append(np.log(sol_tot[4][i]))
     log_b.append(np.log(sol_tot[5][i])+ sol_tot[1][i])
 """
+"""
 # plot solution of BG variables
 #plt.plot(sol_inf.t, sol_inf.y[1], label='a_for')
 #plt.plot(sol_KD.t, sol_KD.y[1], label='a_back')
@@ -290,3 +292,4 @@ plt.ylabel('log(a)&log(b)')
 plt.title('t - log(a)&log(b)')
 plt.legend()
 plt.show()
+"""

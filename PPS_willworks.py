@@ -55,7 +55,7 @@ class PrimordialSolver(object):
 
     def calcH(self, t, y):
         N, phi, dphi, eta = y
-        H2 = (dphi**2/2 + self.V(phi))/3 - self.K*exp(-2*N)
+        H2 = (dphi**2/2 + self.V(phi))/3 - self.K*numpy.exp(-2*N)
         return numpy.sqrt(H2)
 
     def f(self, t, y):
@@ -354,15 +354,12 @@ universes =[Solver(N, V) for N in [N_i_min, N_i_med, N_i_max]]
 import pyoscode
 import tqdm
 
-labellist = ["max","med","min"]
+labellist = ["min","med","max"]
 colorlist = ['darkblue', 'steelblue', 'lightsteelblue']
 
 for figname in ['nov28-10pm-zeta-min']:
     ks = numpy.arange(3,25000)
 
-    def PR_analytic(k, s):
-        ks = 0.05
-        return s.As * (k / ks)**(s.ns-1)
 
     fig, ax = plt.subplots(1)
     i = 0
@@ -408,8 +405,7 @@ for figname in ['nov28-10pm-zeta-min']:
             # gamma = dlogz - dlogca + H/2
             # w2 = -(ca2)*(D2-3*K)*numpy.exp(-2*N)
             # w = numpy.sqrt(w2)
-
-            # RST  for R and zetapf
+            
             R0 = 1/(z[0]*numpy.sqrt(2*(numpy.sqrt(-D2))))
             dR0 = R0*(K/(H0*(a0**2)) + (1 - K*(z[0]**2)/(2*D2*(a0**2)))*((-1j * numpy.sqrt(-D2)/a0) + H0 - dlogz[0] - K/(H0*(a0**2))))
 

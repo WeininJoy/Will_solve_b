@@ -3,8 +3,9 @@ import math
 import matplotlib.pyplot as plt
 from scipy.integrate import solve_ivp
 from scipy import optimize
-from astropy import units as u
-from astropy.constants import c
+import astropy
+#from astropy import units as u
+#from astropy.constants import c
 import PPS_models
 
 # Planck constant
@@ -17,14 +18,14 @@ sigma = 1.1424624667273704e-05
 phi_0 = 5.815354804140279
 V0 = m_p**4
 N_0 = 12.0 + np.log(sigma)  # N_paper = ln(a/lp) = 10.0
-Nb_0 = 0.6971946729724704
-Nb_dot_0 = 0.7957397827643071
+Nb_0 = 0.4716702265235365
+Nb_dot_0 = 0.6057698489658712
 b_0 = np.log(Nb_0)
 b_dot_0 = Nb_dot_0 * b_0
 
 # Cross horizon (k=0.05 Mpc^-1)
-H0 = 70 * u.km/u.s/u.Mpc
-K = -1.0
+H0 = 70 * astropy.unit.km/astropy.unit.s/astropy.unit.Mpc
+K = 1.0
 if K>0: Omega_K = - 0.01
 else: Omega_K = 0.01
 a0 = c * np.sqrt(-K/Omega_K)/H0
@@ -146,10 +147,11 @@ for k in k_array:
     y0 = [phi_0, N_0, phi_dot_IC(phi_0), N_dot_IC(phi_0, N_0), 0.0, R_IC, R_dot_IC]
     sol_inf = solve_ivp(odes, [0, 1.e8], y0, method='RK45', events=inflating) 
     sol_KD = solve_ivp(odes, [0, -1.e5], y0, method='RK45', events=BBstart)
-
+    
+    m = len(sol_inf.t)//5
     # Combine solutions of KD and inflation together
-    t_tot = np.concatenate((np.flipud(sol_KD.t), sol_inf.t), axis=0)
-    sol_tot = np.concatenate((np.fliplr(sol_KD.y), sol_inf.y), axis=1)
+    t_tot = np.concatenate((np.flipud(sol_KD.t), sol_inf.t[:m]), axis=0)
+    sol_tot = np.concatenate((np.fliplr(sol_KD.y), sol_inf.y[:m]), axis=1)
 
     # Shift t and tau such that the universe start from t=0 and tau=0
     for i in range(len(t_tot)):
@@ -200,11 +202,10 @@ for k in k_array:
     plt.show()
     """
     
-"""
+
 plt.plot(k_array, P_R_list)
 plt.xscale('log')
 plt.xlabel('k(Mpc^-1)')
 plt.ylabel('log(10^10*P_R(k))')
 plt.title('k - P_R(k)')
 plt.show()
-"""

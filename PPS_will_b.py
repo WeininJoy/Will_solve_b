@@ -56,7 +56,7 @@ class PrimordialSolver(object):
 
     def calcH(self, t, y):
         N, phi, dphi, eta = y
-        H2 = (dphi**2/2 + self.V(phi))/3 - self.K*exp(-2*N)
+        H2 = (dphi**2/2 + self.V(phi))/3 - self.K*numpy.exp(-2*N)
         return numpy.sqrt(H2)
 
     def f(self, t, y):
@@ -493,9 +493,9 @@ class Solver_b(object):
 
         return 0
 
-N_i_min, N_i_med, N_i_max= -1.5, -0.4676751301973933, 0.5646497396052134
-universe = Solver_b(N_i_min, V)
-universe.test_b_IC()
+# N_i_min, N_i_med, N_i_max= -1.5, -0.4676751301973933, 0.5646497396052134
+# universe = Solver_b(N_i_min, V)
+# universe.test_b_IC()
 
 class R_func(object):
     def __init__(self, V, cs=1):
@@ -720,13 +720,15 @@ import tqdm
 # N_i_min = -1.5
 # N_i_med = (N_i_max + N_i_min)/2
 
-# N_i_min, N_i_med, N_i_max= -1.5, -0.4676751301973933, 0.5646497396052134
-# print('N_i_min, N_i_med, N_i_max= '+str(N_i_min)+', '+str(N_i_med)+', '+str(N_i_max))
+N_i_min, N_i_med, N_i_max= -1.5, -0.4676751301973933, 0.5646497396052134
+print('N_i_min, N_i_med, N_i_max= '+str(N_i_min)+', '+str(N_i_med)+', '+str(N_i_max))
 
-# universes =[Solver(N, V) for N in [N_i_max, N_i_med, N_i_min]]
-# labellist = ["max","med","min"]
-# colorlist = ['darkblue', 'steelblue', 'lightsteelblue']
-
+universes =[Solver(N, V) for N in [N_i_min, N_i_med, N_i_max]]
+labellist = ["max","med","min"]
+colorlist = ['darkblue', 'steelblue', 'lightsteelblue']
+# universes = [Solver(N_i_med, V)]
+# labellist = ["med"]
+# colorlist = ['darkblue']
 
 ## total PPS by A,B
 # N_i_list = [0.5646497396052134, 0.3, 0.0, -0.4676751301973933, -0.8, -1, -1.2]
@@ -736,15 +738,16 @@ import tqdm
 # labellist = ['0.565', '0.3', '0.0', '-0.468', '-0.8', '-1', '-1.2']
 # colorlist = ['red', 'sandybrown', 'gold', 'darkkhaki', 'chartreuse', 'deepskyblue', 'blue']
 
-"""
-for figname in ['jan13-8am-PR']:
+
+for figname in ['jan15-9am-actual-b-will']:
     ks = numpy.arange(3,25000)
 
     def PR_analytic(k, s):
         ks = 0.05
         return s.As * (k / ks)**(s.ns-1)
-
+    
     fig, ax = plt.subplots(1)
+    
     i = 0
     for universe in universes:
         t, eps, dlogz, N, H, z, K = universe.inflation(10000)
@@ -766,7 +769,7 @@ for figname in ['jan13-8am-PR']:
             w2 = (-D2**2 + K*(1+eps-2/H*dlogz)*D2+K**2*eps)*numpy.exp(-2*N)/(D2-K*eps)
             w = numpy.sqrt(w2)
 
-            # RST  for R and zetapf
+            # RST for R and zetapf
             R_i, dR_i = universe.get_R_i(k)
             sol = pyoscode.solve(t, numpy.log(w), gamma, t[0], t[-1], R_i, dR_i, logw=True)
             R.append(sol['sol'][-1])
@@ -781,9 +784,9 @@ for figname in ['jan13-8am-PR']:
         ax.plot(ks/universe.a0, numpy.log(1e10*P), zorder=3, label="{} primordial $\Omega_K$".format(labelval),color=colorlist[i])
         # ax.plot(ks/universe.a0, numpy.log(1e10*P), zorder=3, label="$N_i=$ {} ".format(labelval),color=colorlist[i])
         i = i+1
-
-
-    universe = universes[0]
+    
+    
+    universe = universes[1]
     ax.plot(ks/universe.a0, numpy.log(1e10*PR_analytic(ks/universe.a0,universe)), zorder=4, label="$\Lambda$CDM", color="red")
     ax.set_xscale('log')
     ax.set_xlim(1e-4,10**(-0.3))
@@ -808,14 +811,16 @@ for figname in ['jan13-8am-PR']:
     fig.set_size_inches(3.5,3.3)
     fig.tight_layout()
     fig.savefig(figname + '.pdf')
-"""
-"""
-### Make the PPS figure with Mary's R_IC
 
+
+### Make the PPS figure with different R_IC
+"""
 labellist = ["max","med","min"]
-colorlist = ['darkblue', 'steelblue', 'lightsteelblue']
+colorlist = ['darkblue', 'steelblue', 'lightsteelblue', 'g']
+R_IC_name_list = ['BD', 'FlatRST', 'MaryRST', 'bRST']
+universe =Solver(N_i_med, V) 
 
-for figname in ['nov28-10pm-zeta-min']:
+for figname in ['jan15-9am-PPS-diffRIC-Nmed']:
     ks = numpy.arange(3,25000)
 
     def PR_analytic(k, s):
@@ -824,7 +829,7 @@ for figname in ['nov28-10pm-zeta-min']:
 
     fig, ax = plt.subplots(1)
     i = 0
-    for universe in universes:
+    for R_IC_name in R_IC_name_list:
         t, eps, dlogz, N, H, z, K = universe.inflation(10000)
         m = len(t)//5  # why choose this?
         eps = eps[:m]
@@ -861,15 +866,36 @@ for figname in ['nov28-10pm-zeta-min']:
             # Sound speed
             ca2 = (1/(3*H0))*(3*H0 + 2*dH0/H0 - 2*dlogz[0])
             dlogca = ((-1/3)*(dH0/(H0**2))*(3*H0 + 2*dH0/H0 - 2*dlogz[0]) + (1/(3*H0))*(3*dH0 + 2*ddH0/H0 - 2*(dH0/H0)**2 - 2*ddz0/z0 + 2*(dlogz[0])**2))/(2*ca2)
+            
+            def R_IC(R_IC_name, k):
 
+                if R_IC_name =='BD': # Bunch-Davies
+                    dlogz0 =  H0 + ddphi0/dphi0 - dH0/H0
+                    R0 = 1./ (z0*numpy.sqrt(2*k))
+                    dR0 = ( -1.j*k/a0 - dlogz0 )* R0
+                
+                elif R_IC_name =='FlatRST':
+                    R0 = 1./ (z0*numpy.sqrt(2*k))
+                    dR0 = - 1.j*k*R0/ a0
+
+                elif R_IC_name =='MaryRST':
+                    # RST  for R and zetapf (Mary's)
+                    R0 = 1/(z[0]*numpy.sqrt(2*(numpy.sqrt(-D2))))
+                    dR0 = R0*(K/(H0*(a0**2)) + (1 - K*(z[0]**2)/(2*D2*(a0**2)))*((-1j * numpy.sqrt(-D2)/a0) + H0 - dlogz[0] - K/(H0*(a0**2))))
+                
+                elif R_IC_name =='bRST':
+                    R0, dR0 = universe.get_R_i(k)
+
+                else:print('R_IC should be BD, FlatRST, MaryRST, or bRST')
+
+                return [R0, dR0]
+
+            R0, dR0 = R_IC(R_IC_name, k)
             # Ignore this
             # gamma = dlogz - dlogca + H/2
             # w2 = -(ca2)*(D2-3*K)*numpy.exp(-2*N)
             # w = numpy.sqrt(w2)
 
-            # RST  for R and zetapf
-            R0 = 1/(z[0]*numpy.sqrt(2*(numpy.sqrt(-D2))))
-            dR0 = R0*(K/(H0*(a0**2)) + (1 - K*(z[0]**2)/(2*D2*(a0**2)))*((-1j * numpy.sqrt(-D2)/a0) + H0 - dlogz[0] - K/(H0*(a0**2))))
 
             # zeta perfect fluid - Ignore this
             # dR0 = R0*(1 + (1/D2)*(K/H0)*(-3*H0 - 2*dH0/H0 + 2*dlogz[0]))*((-1j * numpy.sqrt(-D2)/a0) + H0 - dlogz[0])
@@ -882,8 +908,9 @@ for figname in ['nov28-10pm-zeta-min']:
 
         P = P /P[-1]*PR_analytic(ks[-1]/universe.a0, universe)
 
-        labelval = labellist[i]
-        ax.plot(ks/universe.a0, numpy.log(1e10*P), zorder=3, label="{} primordial $\Omega_K$".format(labelval),color=colorlist[i])
+        # labelval = labellist[i]
+        # ax.plot(ks/universe.a0, numpy.log(1e10*P), zorder=3, label="{} primordial $\Omega_K$".format(labelval),color=colorlist[i])
+        ax.plot(ks/universe.a0, numpy.log(1e10*P), zorder=3, label=R_IC_name,color=colorlist[i])
         i = i+1
 
         # ----
@@ -947,11 +974,12 @@ for figname in ['nov28-10pm-zeta-min']:
         #     ax.plot(l,cosmo_tt, zorder=4,label="$\Lambda$CDM", color="red")
         # i = i+1
 
-    universe = universes[2]
+    # universe = universes[2]
     ax.plot(ks/universe.a0, numpy.log(1e10*PR_analytic(ks/universe.a0,universe)), zorder=4, label="$\Lambda$CDM", color="red")
     ax.set_xscale('log')
     ax.set_xlim(1e-4,10**(-0.3))
     ax.set_ylim(2, 4)
+    ax.set_title('max {} primordial $\Omega_K$')
     ax.set_xlabel('$k\:[\mathrm{Mpc}^{-1}]$')
     ax.set_ylabel(r'$\log\left( 10^{10}\mathcal{P}_\mathcal{R}\right)$')
     ax.set_yticks([2,2.5,3,3.5,4])
