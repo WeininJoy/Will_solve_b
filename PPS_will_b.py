@@ -1,3 +1,7 @@
+import sys
+sys.path.append('/home/weinin/miniconda3/lib/python3.8/site-packages/class_public')
+import classy
+print(classy.__file__)
 import matplotlib
 import matplotlib.pyplot as plt
 from matplotlib import gridspec
@@ -7,7 +11,6 @@ import numpy
 from scipy.optimize import root_scalar, root
 from scipy.integrate import solve_ivp
 from scipy.special import logsumexp
-import classy
 
 from scipy.constants import c, hbar, G
 import scipy.interpolate
@@ -350,7 +353,8 @@ def solve(x0, x, y):
     return float(f(x0))
 
 def create_figure(K):
-    fig = plt.figure(tight_layout=True, fontproperties=myfont)
+    # fig = plt.figure(tight_layout=True, fontproperties=myfont)
+    fig = plt.figure(tight_layout=True)
     gs = gridspec.GridSpec(2, 3, height_ratios=[2,1])
     ax0 = fig.add_subplot(gs[0, :])
     ax0.set_xticks([])
@@ -739,7 +743,7 @@ colorlist = ['darkblue', 'steelblue', 'lightsteelblue']
 # colorlist = ['red', 'sandybrown', 'gold', 'darkkhaki', 'chartreuse', 'deepskyblue', 'blue']
 
 
-for figname in ['jan15-9am-actual-b-will']:
+for figname in ['jan22-8am-CMB-diffNi-actual-b-will']:
     ks = numpy.arange(3,25000)
 
     def PR_analytic(k, s):
@@ -780,12 +784,72 @@ for figname in ['jan15-9am-actual-b-will']:
 
         P = P /P[-1]*PR_analytic(ks[-1]/universe.a0, universe)
 
-        labelval = labellist[i]
-        ax.plot(ks/universe.a0, numpy.log(1e10*P), zorder=3, label="{} primordial $\Omega_K$".format(labelval),color=colorlist[i])
-        # ax.plot(ks/universe.a0, numpy.log(1e10*P), zorder=3, label="$N_i=$ {} ".format(labelval),color=colorlist[i])
+        # labelval = labellist[i]
+        # ax.plot(ks/universe.a0, numpy.log(1e10*P), zorder=3, label="{} primordial $\Omega_K$".format(labelval),color=colorlist[i])
+        # # ax.plot(ks/universe.a0, numpy.log(1e10*P), zorder=3, label="$N_i=$ {} ".format(labelval),color=colorlist[i])
+        # i = i+1
+
+        # ----
+        # This uses the CLASS package to do power spectrum fitting to give error bars figure for low values of wavenumber k
+
+        cosmo = classy.Class()
+        params = {
+                'output': 'tCl lCl',
+                'l_max_scalars': 2000,
+                'lensing': 'yes',
+                'A_s': universe.As,
+                'n_s': universe.ns,
+                'tau_reio': universe.tau,
+                'h': universe.H0/100,
+                'omega_b': universe.omegabh2,
+                'Omega_k': universe.Omega_K,
+                'omega_cdm': universe.omegach2}
+        
+        cosmo.set(params)
+        cosmo.compute()
+        cls = cosmo.lensed_cl(2000)
+        l = cls['ell'][2:]
+        cosmo_tt = l*(l+1)*cls['tt'][2:] * (1e6 * 2.7255)**2 / (2*numpy.pi)
+        
+        numpy.savetxt('nov28-5pm-correctedR.dat', numpy.array([
+            numpy.concatenate([[1e-8, 1e-7], ks/universe.a0, [1e5]]),
+            numpy.concatenate([[P[0], P[0]], P, [PR_analytic(1e5, universe)]])
+            ]).T)
+        curved = classy.Class()
+        params = {
+                'output': 'tCl lCl',
+                'l_max_scalars': 2000,
+                'lensing': 'yes',
+                'P_k_ini type': 'external_Pk',
+                'command': 'cat nov28-5pm-correctedR.dat',
+                'tau_reio': universe.tau,
+                'h': universe.H0/100,
+                'omega_b': universe.omegabh2,
+                'Omega_k': universe.Omega_K,
+                'omega_cdm': universe.omegach2}
+        curved.set(params)
+        curved.compute()
+        cls = curved.lensed_cl(2000)
+        l = cls['ell'][2:]
+        tt0 = l*(l+1)*cls['tt'][2:] * (1e6 * 2.7255)**2 / (2*numpy.pi)
+        
+        Cl = numpy.loadtxt('COM_PowerSpect_CMB-TT-full_R3.01.txt')
+        tt_dat = Cl[:len(cosmo_tt),1]
+        tt_err_minus = Cl[:len(cosmo_tt),2]
+        tt_err_plus = Cl[:len(cosmo_tt),3]
+        
+        def chi2(tt, lmax=-1):
+            return ((tt_dat - tt)/numpy.where(tt_dat<tt,tt_err_plus,tt_err_minus))**2
+        
+        chi0 = (chi2(tt0)-chi2(cosmo_tt))[:30].sum()
+   
+        ax.plot(l,tt0, zorder=3, label='$\Delta\chi^2=%.2f$' % chi0, color=colorlist[i])
+        
+        if i == 2:
+            ax.plot(l,cosmo_tt, zorder=4,label="$\Lambda$CDM", color="red")
         i = i+1
     
-    
+    """
     universe = universes[1]
     ax.plot(ks/universe.a0, numpy.log(1e10*PR_analytic(ks/universe.a0,universe)), zorder=4, label="$\Lambda$CDM", color="red")
     ax.set_xscale('log')
@@ -795,26 +859,26 @@ for figname in ['jan15-9am-actual-b-will']:
     ax.set_ylabel(r'$\log\left( 10^{10}\mathcal{P}_\mathcal{R}\right)$')
     ax.set_yticks([2,2.5,3,3.5,4])
     ax.legend(loc = 'lower right')
+    """
 
     # Plots the right hand side of the figures in paper
     
-    # ax = axes[1]
-    # ax.set_xscale('log')
-    # ax.errorbar(l, tt_dat, yerr=(tt_err_minus, tt_err_plus), fmt='.', color='r', ecolor='k',marker='o',linestyle='None',capsize=0, markersize=4,zorder=2000,elinewidth=1, markeredgecolor='k')
-    # ax.set_xlim(1.9,30.5)
-    # ax.set_ylim(0,2500)
-    # ax.set_ylabel('$\mathcal{D}_\ell^{TT}\: [\mu \mathrm{K}^2]$')
-    # ax.set_xlabel('$\ell$')
-    # ax.set_xticks([2,10,30])
-    # ax.set_xticklabels([2,10,30])
-    # ax.legend()
+    ax.set_xscale('log')
+    ax.errorbar(l, tt_dat, yerr=(tt_err_minus, tt_err_plus), fmt='.', color='r', ecolor='k',marker='o',linestyle='None',capsize=0, markersize=4,zorder=2000,elinewidth=1, markeredgecolor='k')
+    ax.set_xlim(1.9,30.5)
+    ax.set_ylim(0,2500)
+    ax.set_ylabel('$\mathcal{D}_\ell^{TT}\: [\mu \mathrm{K}^2]$')
+    ax.set_xlabel('$\ell$')
+    ax.set_xticks([2,10,30])
+    ax.set_xticklabels([2,10,30])
+    ax.legend()
     fig.set_size_inches(3.5,3.3)
     fig.tight_layout()
     fig.savefig(figname + '.pdf')
-
+"""
 
 ### Make the PPS figure with different R_IC
-"""
+
 labellist = ["max","med","min"]
 colorlist = ['darkblue', 'steelblue', 'lightsteelblue', 'g']
 R_IC_name_list = ['BD', 'FlatRST', 'MaryRST', 'bRST']
@@ -910,250 +974,91 @@ for figname in ['jan15-9am-PPS-diffRIC-Nmed']:
 
         # labelval = labellist[i]
         # ax.plot(ks/universe.a0, numpy.log(1e10*P), zorder=3, label="{} primordial $\Omega_K$".format(labelval),color=colorlist[i])
-        ax.plot(ks/universe.a0, numpy.log(1e10*P), zorder=3, label=R_IC_name,color=colorlist[i])
-        i = i+1
+        # i = i+1 
 
         # ----
         # This uses the CLASS package to do power spectrum fitting to give error bars figure for low values of wavenumber k
 
-        # cosmo = classy.Class()
-        # params = {
-        #         'output': 'tCl lCl',
-        #         'l_max_scalars': 2000,
-        #         'lensing': 'yes',
-        #         'A_s': universe.As,
-        #         'n_s': universe.ns,
-        #         'tau_reio': universe.tau,
-        #         'h': universe.H0/100,
-        #         'omega_b': universe.omegabh2,
-        #         'Omega_k': universe.Omega_K,
-        #         'omega_cdm': universe.omegach2}
-        #
-        # cosmo.set(params)
-        # cosmo.compute()
-        # cls = cosmo.lensed_cl(2000)
-        # l = cls['ell'][2:]
-        # cosmo_tt = l*(l+1)*cls['tt'][2:] * (1e6 * 2.7255)**2 / (2*numpy.pi)
-        #
-        # numpy.savetxt('nov28-5pm-correctedR.dat', numpy.array([
-        #     numpy.concatenate([[1e-8, 1e-7], ks/universe.a0, [1e5]]),
-        #     numpy.concatenate([[P[0], P[0]], P, [PR_analytic(1e5, universe)]])
-        #     ]).T)
-        # curved = classy.Class()
-        # params = {
-        #         'output': 'tCl lCl',
-        #         'l_max_scalars': 2000,
-        #         'lensing': 'yes',
-        #         'P_k_ini type': 'external_Pk',
-        #         'command': 'cat nov28-5pm-correctedR.dat',
-        #         'tau_reio': universe.tau,
-        #         'h': universe.H0/100,
-        #         'omega_b': universe.omegabh2,
-        #         'Omega_k': universe.Omega_K,
-        #         'omega_cdm': universe.omegach2}
-        # curved.set(params)
-        # curved.compute()
-        # cls = curved.lensed_cl(2000)
-        # l = cls['ell'][2:]
-        # tt0 = l*(l+1)*cls['tt'][2:] * (1e6 * 2.7255)**2 / (2*numpy.pi)
-        #
-        # Cl = numpy.loadtxt('COM_PowerSpect_CMB-TT-full_R3.01.txt')
-        # tt_dat = Cl[:len(cosmo_tt),1]
-        # tt_err_minus = Cl[:len(cosmo_tt),2]
-        # tt_err_plus = Cl[:len(cosmo_tt),3]
-        #
-        # def chi2(tt, lmax=-1):
-        #     return ((tt_dat - tt)/numpy.where(tt_dat<tt,tt_err_plus,tt_err_minus))**2
-        #
-        # chi0 = (chi2(tt0)-chi2(cosmo_tt))[:30].sum()
-        #
-        # ax = axes[1]
-        # ax.plot(l,tt0, zorder=3, label='$\Delta\chi^2=%.2f$' % chi0, color=colorlist[i])
-        #
-        # if i == 2:
-        #     ax.plot(l,cosmo_tt, zorder=4,label="$\Lambda$CDM", color="red")
-        # i = i+1
+        cosmo = classy.Class()
+        params = {
+                'output': 'tCl lCl',
+                'l_max_scalars': 2000,
+                'lensing': 'yes',
+                'A_s': universe.As,
+                'n_s': universe.ns,
+                'tau_reio': universe.tau,
+                'h': universe.H0/100,
+                'omega_b': universe.omegabh2,
+                'Omega_k': universe.Omega_K,
+                'omega_cdm': universe.omegach2}
+        
+        cosmo.set(params)
+        cosmo.compute()
+        cls = cosmo.lensed_cl(2000)
+        l = cls['ell'][2:]
+        cosmo_tt = l*(l+1)*cls['tt'][2:] * (1e6 * 2.7255)**2 / (2*numpy.pi)
+        
+        numpy.savetxt('nov28-5pm-correctedR.dat', numpy.array([
+            numpy.concatenate([[1e-8, 1e-7], ks/universe.a0, [1e5]]),
+            numpy.concatenate([[P[0], P[0]], P, [PR_analytic(1e5, universe)]])
+            ]).T)
+        curved = classy.Class()
+        params = {
+                'output': 'tCl lCl',
+                'l_max_scalars': 2000,
+                'lensing': 'yes',
+                'P_k_ini type': 'external_Pk',
+                'command': 'cat nov28-5pm-correctedR.dat',
+                'tau_reio': universe.tau,
+                'h': universe.H0/100,
+                'omega_b': universe.omegabh2,
+                'Omega_k': universe.Omega_K,
+                'omega_cdm': universe.omegach2}
+        curved.set(params)
+        curved.compute()
+        cls = curved.lensed_cl(2000)
+        l = cls['ell'][2:]
+        tt0 = l*(l+1)*cls['tt'][2:] * (1e6 * 2.7255)**2 / (2*numpy.pi)
+        
+        Cl = numpy.loadtxt('COM_PowerSpect_CMB-TT-full_R3.01.txt')
+        tt_dat = Cl[:len(cosmo_tt),1]
+        tt_err_minus = Cl[:len(cosmo_tt),2]
+        tt_err_plus = Cl[:len(cosmo_tt),3]
+        
+        def chi2(tt, lmax=-1):
+            return ((tt_dat - tt)/numpy.where(tt_dat<tt,tt_err_plus,tt_err_minus))**2
+        
+        chi0 = (chi2(tt0)-chi2(cosmo_tt))[:30].sum()
+   
+        ax.plot(l,tt0, zorder=3, label='$\Delta\chi^2=%.2f$' % chi0, color=colorlist[i])
+        
+        if i == 2:
+            ax.plot(l,cosmo_tt, zorder=4,label="$\Lambda$CDM", color="red")
+        i = i+1
 
     # universe = universes[2]
-    ax.plot(ks/universe.a0, numpy.log(1e10*PR_analytic(ks/universe.a0,universe)), zorder=4, label="$\Lambda$CDM", color="red")
-    ax.set_xscale('log')
-    ax.set_xlim(1e-4,10**(-0.3))
-    ax.set_ylim(2, 4)
-    ax.set_title('max {} primordial $\Omega_K$')
-    ax.set_xlabel('$k\:[\mathrm{Mpc}^{-1}]$')
-    ax.set_ylabel(r'$\log\left( 10^{10}\mathcal{P}_\mathcal{R}\right)$')
-    ax.set_yticks([2,2.5,3,3.5,4])
-    ax.legend()
+    # ax.plot(ks/universe.a0, numpy.log(1e10*PR_analytic(ks/universe.a0,universe)), zorder=4, label="$\Lambda$CDM", color="red")
+    # ax.set_xscale('log')
+    # ax.set_xlim(1e-4,10**(-0.3))
+    # ax.set_ylim(2, 4)
+    # ax.set_xlabel('$k\:[\mathrm{Mpc}^{-1}]$')
+    # ax.set_ylabel(r'$\log\left( 10^{10}\mathcal{P}_\mathcal{R}\right)$')
+    # ax.set_yticks([2,2.5,3,3.5,4])
+    # ax.legend()
 
     # Plots the right hand side of the figures in paper
     
-    # ax = axes[1]
-    # ax.set_xscale('log')
-    # ax.errorbar(l, tt_dat, yerr=(tt_err_minus, tt_err_plus), fmt='.', color='r', ecolor='k',marker='o',linestyle='None',capsize=0, markersize=4,zorder=2000,elinewidth=1, markeredgecolor='k')
-    # ax.set_xlim(1.9,30.5)
-    # ax.set_ylim(0,2500)
-    # ax.set_ylabel('$\mathcal{D}_\ell^{TT}\: [\mu \mathrm{K}^2]$')
-    # ax.set_xlabel('$\ell$')
-    # ax.set_xticks([2,10,30])
-    # ax.set_xticklabels([2,10,30])
-    # ax.legend()
+    ax.set_xscale('log')
+    ax.errorbar(l, tt_dat, yerr=(tt_err_minus, tt_err_plus), fmt='.', color='r', ecolor='k',marker='o',linestyle='None',capsize=0, markersize=4,zorder=2000,elinewidth=1, markeredgecolor='k')
+    ax.set_xlim(1.9,30.5)
+    ax.set_ylim(0,2500)
+    ax.set_ylabel('$\mathcal{D}_\ell^{TT}\: [\mu \mathrm{K}^2]$')
+    ax.set_xlabel('$\ell$')
+    ax.set_xticks([2,10,30])
+    ax.set_xticklabels([2,10,30])
+    ax.legend()
     fig.set_size_inches(3.5,3.3)
     fig.tight_layout()
     fig.savefig(figname + '.pdf')
+
 """
-
-#lmax = 30
-#
-#axes[1].plot(l, numpy.zeros_like(l))
-#axes[1].plot(l, chi2(cosmo_tt) - chi2(tt0))
-#axes[1].plot(l, chi2(cosmo_tt) - chi2(tt1))
-#axes[1].set_yscale('log')
-#chi2(cosmo_tt)
-#
-#chi2(cosmo_tt)[:50].sum()
-#chi2(tt0)[:50].sum()
-#chi2(tt1)[:50].sum()
-
-# universe = universes[-1]
-# fig, ax0, ax1, ax2, ax3, ax4 = create_figure(universe.K)
-# axes = [ax4, ax1, ax2, ax3]
-#
-# for ax in axes:
-#     color = next(ax._get_lines.prop_cycler)['color']
-#
-# # Pre-inflation
-# # During-inflation
-# for i, (label, universe) in enumerate(zip(['min', 'med', 'max'], universes)):
-#     N_pre, Omega_pre, eta_pre = universe.pre_inflation()
-#     numpy.exp(N_pre[-1])*(Mpc/lp)/1000
-#     N_pre
-#     N_inflating, Omega_inflating, eta_inflating = universe.inflation()
-#     label = '%s primordial $\Omega_K$' % label
-#     for ax in axes:
-#         ax.plot(numpy.concatenate([N_pre, N_inflating]), numpy.concatenate([Omega_pre, Omega_inflating]), label=label, zorder=-i)
-#
-# # Post-inflation
-# N_reheating, Omega_reheating, eta_reheating = universe.reheating()
-# for ax in axes:
-#     ax.plot(N_reheating, Omega_reheating, label='Reheating', color=color)
-#
-# # Late-time universe
-# N_late = numpy.linspace(N_reheating[-1],numpy.log(universe.a0),10000)
-# Omega_late = universe.Omega_late_time(N_late)
-# for ax in axes:
-#     ax.plot(N_late, Omega_late, label='Late time evolution')
-#
-#
-# Omega_star = -2*universe.logk_in_natural_units(0.05)
-# Omega_min = -2*universe.logk_in_natural_units(1e-4)
-# Omega_max = -2*universe.logk_in_natural_units(1)
-#
-# y = numpy.linspace(*ax4.get_ylim(),1000)
-# x = numpy.log(universe.a0/(1+universe.z)) + 0.2*numpy.sin(0.2*2*numpy.pi*y)
-#
-# for ax in axes:
-#     ax.axhline(Omega_min, color='k', linestyle=':', linewidth=0.5, label=r'$k_\mathrm{min}=10^{-4} \mathrm{Mpc}^{-1}$')
-#     ax.axhline(Omega_star, color='k', linestyle='-', linewidth=0.5, label='$k_*=0.05 \mathrm{Mpc}^{-1}$')
-#     ax.axhline(Omega_max, color='k', linestyle='--', linewidth=0.5, label='$k_\mathrm{max}=1 \mathrm{Mpc}^{-1}$')
-#     ax.plot(x, y, label='CMB')
-#
-# eta_pre_cmb = scipy.integrate.quad(lambda N: numpy.exp(universe.Omega_late_time(N)[0]*0.5), -numpy.inf, numpy.log(universe.a0/(1+universe.z)))[0]
-# eta_post_cmb = scipy.integrate.quad(lambda N: numpy.exp(universe.Omega_late_time(N)[0]*0.5), numpy.log(universe.a0/(1+universe.z)),numpy.log(universe.a0))[0]
-#
-# ((eta_pre+eta_inflating) + eta_pre_cmb)/eta_post_cmb
-#
-#
-# #for N_i in numpy.linspace(N_i_min, N_i_max, 10):
-# #    universe = Solver(N_i, V)
-# #    # Pre-inflation
-# #    N_pre, Omega_pre, eta_pre = universe.pre_inflation()
-# #    for ax in [ax1]:
-# #        ax.plot(N_pre, Omega_pre, 'k-', zorder=-1000, linewidth=0.25)
-# #
-# #    # During-inflation
-# #    N_inflating, Omega_inflating, eta_inflating = universe.inflation()
-# #    for ax in [ax1]:
-# #        ax.plot(N_inflating, Omega_inflating, 'k-', zorder=-1000, linewidth=0.25)
-# #
-#
-# pad = 2
-# xmin = min(N_reheating) - pad
-# xmax = max(N_reheating) + pad
-# ymin = min(Omega_reheating) - pad
-# ymax = max(Omega_reheating) + pad
-#
-# rect2 = patches.Rectangle([xmin, ymin], xmax-xmin, ymax-ymin,fill=False)
-# ax4.add_patch(rect2)
-# (xmin, ymin), (xmax, ymax) = rect2.get_bbox().get_points()
-# ax2.set_xlim(xmin, xmax)
-# ax2.set_ylim(ymin, ymax)
-#
-#
-# pad = 2
-# ymax = Omega_pre[-1] + pad
-# ymin = max(Omega_max - pad, Omega_pre[0])
-# xmin = solve(ymin, Omega_pre, N_pre)
-# xmax = solve(ymin, Omega_inflating, N_inflating)
-#
-# rect1 = patches.Rectangle([xmin, ymin], xmax-xmin, ymax-ymin,fill=False)
-#
-# ax4.add_patch(rect1)
-# (xmin, ymin), (xmax, ymax) = rect1.get_bbox().get_points()
-# ax1.set_xlim(xmin, xmax)
-# ax1.set_ylim(ymin, ymax)
-#
-#
-# pad = 2
-# ymin = Omega_max - pad
-# ymax = Omega_min + pad
-# xmax = N_late[-1]
-# xmin = solve(ymin, Omega_late, N_late)
-#
-# rect3 = patches.Rectangle([xmin, ymin], xmax-xmin, ymax-ymin,fill=False)
-# ax4.add_patch(rect3)
-# (xmin, ymin), (xmax, ymax) = rect3.get_bbox().get_points()
-# ax3.set_xlim(xmin, xmax)
-# ax3.set_ylim(ymin, ymax)
-#
-#
-# # Adjust overall axes
-# right_pad = 2
-# left_pad = 2
-# upper_pad = 2
-# lower_pad = 2
-#
-# ax4.set_ylim(rect2.get_bbox().get_points()[0,1]-lower_pad, rect1.get_bbox().get_points()[1,1]+upper_pad)
-# ax4.set_xlim(rect1.get_bbox().get_points()[0,0]-left_pad, rect3.get_bbox().get_points()[1,0]+right_pad)
-#
-#
-#
-# ax4.legend(loc='lower left')
-#
-# fig.set_size_inches(7,6)
-# fig.tight_layout()
-# fig.savefig('phi4o3.pdf')
-#
-# primordial = PrimordialSolver(V, +1)
-#
-# #phi_is = numpy.linspace(4,8,20)
-# #N_is = numpy.linspace(-3,5,20)
-# #
-# #nss = []
-# #for phi_i in phi_is:
-# #    nss.append([])
-# #    for N_i in N_is:
-# #        if phi_i < primordial.phimin(N_i):
-# #            ns = numpy.nan
-# #        else:
-# #            try:
-# #                ns = primordial.find_ns_As_r(N_i, phi_i, universe.logaH)[0]
-# #            except:
-# #                print("error")
-# #                ns = numpy.nan
-# #
-# #        nss[-1].append(ns)
-# #
-# #nss = numpy.array(nss)
-# #fig, ax = plt.subplots()
-# #ax.contourf(phi_is, N_is, nss.T)
-# #nss

@@ -1,5 +1,7 @@
 ##### Goal of this code: Find phi_0 and sigma by one root-finder
-
+import sys
+sys.path.append('/home/weinin/miniconda3/lib/python3.8/site-packages/class_public')
+import classy
 import numpy as np
 import math
 import matplotlib.pyplot as plt
@@ -16,9 +18,9 @@ m_p = 1.0 # reduced planck mass = \sqrt(c*hbar/8/pi/G) ??
 
 # constants
 V0 = m_p**4
-N_i_origin_list = [11.713, 12.0, 14.0] # N_paper = ln(a/lp) = 10.0
-phi_i_list = [10.44997084519851, 6.106810584463498, 5.86751537]
-sigma_list = [1.1580032025900702e-05, 1.1460193110670108e-05, 1.14278051e-05]
+N_i_origin_list = [11.713, 12.7, 13.6] # N_paper = ln(a/lp) = 10.0
+phi_i_list = [10.44997084519851, 5.9, 5.86751537]
+sigma_list = [1.1580032025900702e-05, 1.14345473e-05, 1.14278051e-05]
 N_end_cons = 70.0
 
 # Cross horizon (k=0.05 Mpc^-1)
@@ -29,6 +31,7 @@ As_cons = 2.e-9
 
 V = lambda phi: V0 * (1.0 - np.exp(- math.sqrt(2.0/3.0)* phi/m_p ) )**2
 V.d = lambda phi: 2.0* math.sqrt(2.0/3.0) * V0/m_p *(1.0- np.exp(- np.sqrt(2.0/3.0)* phi/m_p)) *np.exp(- np.sqrt(2.0/3.0)* phi/m_p)
+V.dd = lambda phi: 4.0/3.0* V0/m_p**2 *(2.0*np.exp(- np.sqrt(2.0/3.0)* phi/m_p) -1.0) *np.exp(- np.sqrt(2.0/3.0)* phi/m_p)
 
 class PrimordialSolver(object):
     def __init__(self, n, V, K):
@@ -195,16 +198,17 @@ class IC_b_Solver(object):
         sol_inflating = self.PrimordialSolver.solve(self.N_i, self.phi_i, method='Radau', events=Inflating(self))
         SR_index = 0
         for i in range(len(sol_inflating.t)):
-            if sol_inflating.t[i] < (8./8.)*SR_start + (0./8.)*SR_end < sol_inflating.t[i+1]:
+            if sol_inflating.t[i] < (15./15.)*SR_start + (0./15.)*SR_end < sol_inflating.t[i+1]:
                 SR_index = i
        
         t_SR = sol_inflating.t[SR_index]
         N_SR = sol_inflating.y[0][SR_index]
         dN_SR = self.PrimordialSolver.calcH(t_SR, sol_inflating.y[:,SR_index])
 
-        anal_b_SR_IC = self.anal_b_SR(sol_inflating.y[3][SR_index], eta_SR_end, self.solve_C())
-        anal_b_SR_prime_IC = self.anal_b_SR_prime(sol_inflating.y[3][SR_index], eta_SR_end, self.solve_C())
-        y0_SR = [N_SR, dN_SR, np.log(anal_b_SR_IC), anal_b_SR_prime_IC/ (anal_b_SR_IC*np.exp(N_SR)), sol_inflating.y[1][SR_index], sol_inflating.y[2][SR_index], sol_inflating.y[3][SR_index]]
+        # anal_b_SR_IC = self.anal_b_SR(sol_inflating.y[3][SR_index], eta_SR_end, self.solve_C())
+        # anal_b_SR_prime_IC = self.anal_b_SR_prime(sol_inflating.y[3][SR_index], eta_SR_end, self.solve_C())
+        # y0_SR = [N_SR, dN_SR, np.log(anal_b_SR_IC), anal_b_SR_prime_IC/ (anal_b_SR_IC*np.exp(N_SR)), sol_inflating.y[1][SR_index], sol_inflating.y[2][SR_index], sol_inflating.y[3][SR_index]]
+        y0_SR = [N_SR, dN_SR, N_SR, dN_SR, sol_inflating.y[1][SR_index], sol_inflating.y[2][SR_index], sol_inflating.y[3][SR_index]]
         return [t_SR, y0_SR]
 
     def IC_KD(self, A, B):
@@ -225,9 +229,10 @@ class IC_b_Solver(object):
         N_DKD = sol_KD.y[0][DKD_index]
         dN_DKD = self.PrimordialSolver.calcH(t_DKD, sol_KD.y[:,DKD_index])
 
-        anal_b_KD_IC = self.anal_b_KD(sol_KD.y[3][DKD_index], eta_BBstart, A, B)
-        anal_b_KD_prime_IC = self.anal_b_KD_prime(sol_KD.y[3][DKD_index], eta_BBstart, A, B)
-        y0_KD = [N_DKD, dN_DKD, np.log(anal_b_KD_IC), anal_b_KD_prime_IC/ (anal_b_KD_IC*np.exp(N_DKD)), sol_KD.y[1][DKD_index], sol_KD.y[2][DKD_index], sol_KD.y[3][DKD_index]]
+        # anal_b_KD_IC = self.anal_b_KD(sol_KD.y[3][DKD_index], eta_BBstart, A, B)
+        # anal_b_KD_prime_IC = self.anal_b_KD_prime(sol_KD.y[3][DKD_index], eta_BBstart, A, B)
+        # y0_KD = [N_DKD, dN_DKD, np.log(anal_b_KD_IC), anal_b_KD_prime_IC/ (anal_b_KD_IC*np.exp(N_DKD)), sol_KD.y[1][DKD_index], sol_KD.y[2][DKD_index], sol_KD.y[3][DKD_index]]
+        y0_KD = [N_DKD, dN_DKD, N_DKD, dN_DKD, sol_KD.y[1][DKD_index], sol_KD.y[2][DKD_index], sol_KD.y[3][DKD_index]]
         return [t_DKD, y0_KD]
 
     def approx_B(self):
@@ -281,8 +286,27 @@ class IC_b_Solver(object):
         return [A, B]
 
     def get_b_IC(self):
+        ## n=(KD, t0, SR)
+        # sol_KD = self.PrimordialSolver.solve(self.N_i, self.phi_i, d=-1)
+
+        # if i == 0:
+        #     A, B = 0.5, 1.7
+        #     sol_KD_for = solve_ivp(self.f_b, [self.IC_KD(A, B)[0], 0.0], self.IC_KD(A, B)[1], method='Radau')
+        #     return [sol_KD_for.y[2][-1], sol_KD_for.y[3][-1]]
+
+        # elif i==1:
+        #     dN_i = self.PrimordialSolver.calcH(sol_KD.t[0], sol_KD.y[:,0])
+        #     return [self.N_i, dN_i]
+
+        # elif i==2:
+        #     sol_inf_back = solve_ivp(self.f_b, [self.IC_SR()[0], 0.0], self.IC_SR()[1], method='Radau', d=-1)
+        #     return [sol_inf_back.y[2][-1], sol_inf_back.y[3][-1]]
+        # else: 
+        #     print('n should be 0, 1, or 2')
+
         sol_inf = solve_ivp(self.f_b, [self.IC_SR()[0], 0.0], self.IC_SR()[1], method='Radau', d=-1)
         return [sol_inf.y[2][-1], sol_inf.y[3][-1]]
+        
 
 class Inflating(object):
     terminal=True
@@ -406,10 +430,13 @@ class R_func(object):
 
 
 class Solver(object):
-    def __init__(self, n, N_i_origin, V, H0=H0, Omega_K=Omega_K, N_end_cons=N_end_cons, As_cons=As_cons, ks_cons=ks_cons):
+    def __init__(self, n, N_i_origin, V, H0=H0, omegabh2=0.022509, omegach2=0.11839, tau=0.0515, Omega_K=Omega_K, N_end_cons=N_end_cons, As_cons=As_cons, ks_cons=ks_cons):
         # Initialise late-time parameters
         self.n = n
         self.H0 = H0
+        self.omegabh2 = omegabh2
+        self.omegach2 = omegach2
+        self.tau = tau
         self.Omega_K = Omega_K
         if self.K == 0:
             self.a0 = 1
@@ -482,36 +509,53 @@ class Solver(object):
         DKD_start, BB_start, eta_BBstart = self.IC_b_Solver.KD_t_eta()
         print('phi_i, sigma='+str(self.phi_i)+', '+str(self.sigma))
         print('SR_start, SR_end='+str(SR_start)+','+str(SR_end))
-        A, B = self.IC_b_Solver.solve_AB()
+        # A, B = self.IC_b_Solver.solve_AB()
+        A, B = 0.5, 1.7
         print('C='+str(self.IC_b_Solver.solve_C()))
         print('Nb, dNb='+str(self.Nb_i)+', '+str(self.dNb_i))
         
         sol_inflating = self.PrimordialSolver.solve(self.N_i, self.phi_i, method='Radau', events=Inflating(self))
         sol_KD = self.PrimordialSolver.solve(self.N_i, self.phi_i, method='Radau', d=-1, events = BBstart(self))
-
-        sol_inf_for = solve_ivp(self.IC_b_Solver.f_b, [self.IC_b_Solver.IC_SR()[0], SR_end], self.IC_b_Solver.IC_SR()[1], method='Radau')
-        sol_inf_back = solve_ivp(self.IC_b_Solver.f_b, [self.IC_b_Solver.IC_SR()[0], 0.5*DKD_start], self.IC_b_Solver.IC_SR()[1], method='Radau', d=-1, events = BBstart(self))
+        
+        dN_i = self.PrimordialSolver.calcH(sol_KD.t[0], sol_KD.y[:,0])
+        y_t0 = [self.N_i, dN_i, self.N_i, dN_i, sol_KD.y[1][0], sol_KD.y[2][0], sol_KD.y[3][0]]
+        # sol_t0_for = solve_ivp(self.IC_b_Solver.f_b, [0.0, SR_end], y_t0, method='Radau')
+        # sol_t0_back = solve_ivp(self.IC_b_Solver.f_b, [0.0, BB_start], y_t0, method='Radau', d=-1, events = BBstart(self))
+        # sol_inf_for = solve_ivp(self.IC_b_Solver.f_b, [self.IC_b_Solver.IC_SR()[0], SR_end], self.IC_b_Solver.IC_SR()[1], method='Radau')
+        # sol_inf_back = solve_ivp(self.IC_b_Solver.f_b, [self.IC_b_Solver.IC_SR()[0], BB_start], self.IC_b_Solver.IC_SR()[1], method='Radau', d=-1, events = BBstart(self))
         sol_KD_for = solve_ivp(self.IC_b_Solver.f_b, [self.IC_b_Solver.IC_KD(A, B)[0], SR_end], self.IC_b_Solver.IC_KD(A, B)[1], method='Radau')
-        sol_KD_back = solve_ivp(self.IC_b_Solver.f_b, [self.IC_b_Solver.IC_KD(A, B)[0], -1.e5], self.IC_b_Solver.IC_KD(A, B)[1], method='Radau', d=-1, events = BBstart(self))
+        sol_KD_back = solve_ivp(self.IC_b_Solver.f_b, [self.IC_b_Solver.IC_KD(A, B)[0], BB_start], self.IC_b_Solver.IC_KD(A, B)[1], method='Radau', d=-1, events = BBstart(self))
 
-        plt.plot(sol_inflating.t, sol_inflating.y[0], label='a_for')
-        plt.plot(sol_KD.t, sol_KD.y[0], label='a_back')
+        plt.plot(sol_inflating.t, sol_inflating.y[0],label='a,Ni='+labellist[self.n], linestyle='dashed', color=colorlist[self.n])
+        plt.plot(sol_KD.t, sol_KD.y[0], linestyle='dashed', color=colorlist[self.n])
 
-        #plt.plot(sol_inf_for.t, sol_inf_for.y[0], label='a_inf_for')
-        #plt.plot(sol_inf_back.t, sol_inf_back.y[0], label='a_inf_back')
-        plt.plot(sol_inf_for.t, sol_inf_for.y[2], label='b_inf_for')
-        plt.plot(sol_inf_back.t, sol_inf_back.y[2], label='b_inf_back')
+        # plt.plot(sol_t0_for.t, sol_t0_for.y[0], label='a_t0_for')
+        # plt.plot(sol_t0_back.t, sol_t0_back.y[0], label='a_t0_back')
+        # plt.plot(sol_t0_for.t, sol_t0_for.y[2], label='b,Ni='+labellist[self.n], color=colorlist[self.n])
+        # plt.plot(sol_t0_back.t, sol_t0_back.y[2], color=colorlist[self.n])
+
+        # plt.plot(sol_inf_for.t, sol_inf_for.y[0], label='a_inf_for')
+        # plt.plot(sol_inf_back.t, sol_inf_back.y[0], label='a_inf_back')
+        # plt.plot(sol_inf_for.t, sol_inf_for.y[2], label='b,Ni='+labellist[self.n], color=colorlist[self.n])
+        # plt.plot(sol_inf_back.t, sol_inf_back.y[2], color=colorlist[self.n])
         
         # plt.plot(sol_KD_for.t, sol_KD_for.y[0], label='a_KD_for')
         # plt.plot(sol_KD_back.t, sol_KD_back.y[0], label='a_KD_back')
-        plt.plot(sol_KD_for.t, sol_KD_for.y[2], label='b_KD_for')
-        plt.plot(sol_KD_back.t, sol_KD_back.y[2], label='b_KD_back')
-        plt.legend()
-        plt.xlim([-6, 4.5])
-        plt.ylim([-8, 4.5])
-        plt.show()
+        plt.plot(sol_KD_for.t, sol_KD_for.y[2], label='b,Ni='+labellist[self.n], color=colorlist[self.n])
+        plt.plot(sol_KD_back.t, sol_KD_back.y[2], color=colorlist[self.n])
         
         return 0
+
+# universes = [Solver(n, N_i_origin_list[n], V) for n in range(len(N_i_origin_list))]
+
+# for n in range(len(N_i_origin_list)):
+#     universes[n].test_b_IC()
+# plt.legend()
+# plt.xlim([-3, 5])
+# plt.ylim([-5, 5])
+# plt.xlabel('t')
+# plt.ylabel('log(a)&log(b)')
+# plt.show()
 
 import pyoscode
 import tqdm
@@ -530,12 +574,12 @@ import tqdm
 # labellist = ["max","med","min"]
 # colorlist = ['darkblue', 'steelblue', 'lightsteelblue']
 
-universes = [Solver(n, N_i_origin_list[n], V) for n in range(len(N_i_origin_list))]
-labellist = ["max", "med", "min"]
-colorlist = ['darkblue', 'steelblue', 'lightsteelblue']
+# universes = [Solver(n, N_i_origin_list[n], V) for n in range(len(N_i_origin_list))]
+# labellist = ["max", "med", "min"]
+# colorlist = ['darkblue', 'steelblue', 'lightsteelblue']
 
-
-for figname in ['jan17-10am-actual-b-total']:
+"""
+for figname in ['PPS-diffIC-abmatch-Ni_min']:
     ks = np.arange(3,25000)
 
     def PR_analytic(k, s):
@@ -556,7 +600,7 @@ for figname in ['jan17-10am-actual-b-total']:
             gamma = ((H+2*dlogz)*D2 - 3*K*H*eps)/(D2-K*eps)/2
             w2 = (-D2**2 + K*(1+eps-2/H*dlogz)*D2+K**2*eps)*np.exp(-2*N)/(D2-K*eps)
             w = np.sqrt(w2)
-
+            
             # RST for R and zetapf
             R_i, dR_i = universe.get_R_i(k)
             sol = pyoscode.solve(t, np.log(w), gamma, t[0], t[-1], R_i, dR_i, logw=True)
@@ -569,13 +613,73 @@ for figname in ['jan17-10am-actual-b-total']:
         P = P /P[-1]*PR_analytic(ks[-1]/universe.a0, universe)
 
         labelval = labellist[i]
-        ax.plot(ks/universe.a0, np.log(1e10*P), zorder=3, label="{} primordial $\Omega_K$".format(labelval),color=colorlist[i])
-        # ax.plot(ks/universe.a0, np.log(1e10*P), zorder=3, label="$N_i=$ {} ".format(labelval),color=colorlist[i])
+        # ax.plot(ks/universe.a0, np.log(1e10*P), zorder=3, label="{} primordial $\Omega_K$".format(labelval),color=colorlist[i])
+        ax.plot(ks/universe.a0, np.log(1e10*P), zorder=3, label="$a&b$ match at {} ".format(labelval),color=colorlist[i])
         i = i+1
+
+        # ----
+        # This uses the CLASS package to do power spectrum fitting to give error bars figure for low values of wavenumber k
+
+        # cosmo = classy.Class()
+        # params = {
+        #         'output': 'tCl lCl',
+        #         'l_max_scalars': 2000,
+        #         'lensing': 'yes',
+        #         'A_s': universe.As,
+        #         'n_s': universe.ns,
+        #         'tau_reio': universe.tau,
+        #         'h': universe.H0/100,
+        #         'omega_b': universe.omegabh2,
+        #         'Omega_k': universe.Omega_K,
+        #         'omega_cdm': universe.omegach2}
+        
+        # cosmo.set(params)
+        # cosmo.compute()
+        # cls = cosmo.lensed_cl(2000)
+        # l = cls['ell'][2:]
+        # cosmo_tt = l*(l+1)*cls['tt'][2:] * (1e6 * 2.7255)**2 / (2*np.pi)
+        
+        # np.savetxt('nov28-5pm-correctedR.dat', np.array([
+        #     np.concatenate([[1e-8, 1e-7], ks/universe.a0, [1e5]]),
+        #     np.concatenate([[P[0], P[0]], P, [PR_analytic(1e5, universe)]])
+        #     ]).T)
+        # curved = classy.Class()
+        # params = {
+        #         'output': 'tCl lCl',
+        #         'l_max_scalars': 2000,
+        #         'lensing': 'yes',
+        #         'P_k_ini type': 'external_Pk',
+        #         'command': 'cat nov28-5pm-correctedR.dat',
+        #         'tau_reio': universe.tau,
+        #         'h': universe.H0/100,
+        #         'omega_b': universe.omegabh2,
+        #         'Omega_k': universe.Omega_K,
+        #         'omega_cdm': universe.omegach2}
+        # curved.set(params)
+        # curved.compute()
+        # cls = curved.lensed_cl(2000)
+        # l = cls['ell'][2:]
+        # tt0 = l*(l+1)*cls['tt'][2:] * (1e6 * 2.7255)**2 / (2*np.pi)
+        
+        # Cl = np.loadtxt('COM_PowerSpect_CMB-TT-full_R3.01.txt')
+        # tt_dat = Cl[:len(cosmo_tt),1]
+        # tt_err_minus = Cl[:len(cosmo_tt),2]
+        # tt_err_plus = Cl[:len(cosmo_tt),3]
+        
+        # def chi2(tt, lmax=-1):
+        #     return ((tt_dat - tt)/np.where(tt_dat<tt,tt_err_plus,tt_err_minus))**2
+        
+        # chi0 = (chi2(tt0)-chi2(cosmo_tt))[:30].sum()
+   
+        # ax.plot(l,tt0, zorder=3, label='$\Delta\chi^2=%.2f$' % chi0, color=colorlist[i])
+        
+        # if i == 2:
+        #     ax.plot(l,cosmo_tt, zorder=4,label="$\Lambda$CDM", linestyle='dashed',color="red")
+        # i = i+1
     
     
     universe = universes[1]
-    ax.plot(ks/universe.a0, np.log(1e10*PR_analytic(ks/universe.a0,universe)), zorder=4, label="$\Lambda$CDM", color="red")
+    ax.plot(ks/universe.a0, np.log(1e10*PR_analytic(ks/universe.a0,universe)), zorder=4, linestyle='dashed', label="$\Lambda$CDM", color="red")
     ax.set_xscale('log')
     ax.set_xlim(1e-4,10**(-0.3))
     ax.set_ylim(2, 4)
@@ -586,7 +690,6 @@ for figname in ['jan17-10am-actual-b-total']:
 
     # Plots the right hand side of the figures in paper
     
-    # ax = axes[1]
     # ax.set_xscale('log')
     # ax.errorbar(l, tt_dat, yerr=(tt_err_minus, tt_err_plus), fmt='.', color='r', ecolor='k',marker='o',linestyle='None',capsize=0, markersize=4,zorder=2000,elinewidth=1, markeredgecolor='k')
     # ax.set_xlim(1.9,30.5)
@@ -599,3 +702,189 @@ for figname in ['jan17-10am-actual-b-total']:
     fig.set_size_inches(3.5,3.3)
     fig.tight_layout()
     fig.savefig(figname + '.pdf')
+
+"""
+
+### Make the PPS figure with different R_IC
+
+colorlist = ['darkblue', 'steelblue', 'lightsteelblue', 'g']
+R_IC_name_list = ['BD', 'FlatRST', 'MaryRST', 'bRST']
+universe =Solver(2, N_i_origin_list[2], V) 
+
+for figname in ['CMB-diffIC-Ni_max']:
+    ks = np.arange(3,25000)
+
+    def PR_analytic(k, s):
+        ks = 0.05
+        return s.As * (k / ks)**(s.ns-1)
+
+    fig, ax = plt.subplots(1)
+    i = 0
+    for R_IC_name in R_IC_name_list:
+        t, eps, dlogz, N, H, z, K = universe.inflation(10000)
+        m = len(t)//5  # why choose this?
+        eps = eps[:m]
+        dlogz = dlogz[:m]
+        N = N[:m]
+        H = H[:m]
+        z = z[:m]
+        t = t[:m]
+
+        R = []
+        for k in tqdm.tqdm(ks):
+            # D squared operator in fourier space = Laplacian + 3K
+            D2 = -k*(k+2)+3*K
+
+            # Differential Equation for R variable in coordinate time (t) for PyOscode Package
+            gamma = ((H+2*dlogz)*D2 - 3*K*H*eps)/(D2-K*eps)/2
+            w2 = (-D2**2 + K*(1+eps-2/H*dlogz)*D2+K**2*eps)*np.exp(-2*N)/(D2-K*eps)
+            w = np.sqrt(w2)
+
+            # Stuff
+            a0 = np.exp(N[0])
+            z0 = z[0]
+            H0 = H[0]
+            dphi0 = H0*z0/a0
+            dH0 = (-1/2)*(dphi0**2) + K/(a0**2)
+            #ddphi0 = (1/a0)*(dH0*z0 + H0*z0*dlogz[0] - z0*H0**2)#(dlogz[0] + dH0/H0 - H0)*dphi0
+            #ddH0 = H0*(a0**2)*(-dH0*z0**2 - H0*dlogz[0]*z0**2 - (H0**2)*(z0**2) + 2*K)
+            ddphi0 = -3*H0*dphi0 - universe.V.d(universe.phi_i)
+            dddphi0 = -3*dH0*dphi0 - 3*H0*ddphi0 - dphi0*universe.V.dd(universe.phi_i)
+
+            ddH0 = -dphi0*ddphi0 - 2*K*H0/(a0**2)
+            ddz0 = z0*(dlogz[0])**2 + z0*(dH0 + dddphi0/dphi0 - (ddphi0/dphi0)**2 - ddH0/H0 + (dH0/H0)**2)
+
+            # Sound speed
+            ca2 = (1/(3*H0))*(3*H0 + 2*dH0/H0 - 2*dlogz[0])
+            dlogca = ((-1/3)*(dH0/(H0**2))*(3*H0 + 2*dH0/H0 - 2*dlogz[0]) + (1/(3*H0))*(3*dH0 + 2*ddH0/H0 - 2*(dH0/H0)**2 - 2*ddz0/z0 + 2*(dlogz[0])**2))/(2*ca2)
+            
+            def R_IC(R_IC_name, k):
+
+                if R_IC_name =='BD': # Bunch-Davies
+                    dlogz0 =  H0 + ddphi0/dphi0 - dH0/H0
+                    R0 = 1./ (z0*np.sqrt(2*k))
+                    dR0 = ( -1.j*k/a0 - dlogz0 )* R0
+                
+                elif R_IC_name =='FlatRST':
+                    R0 = 1./ (z0*np.sqrt(2*k))
+                    dR0 = - 1.j*k*R0/ a0
+
+                elif R_IC_name =='MaryRST':
+                    # RST  for R and zetapf (Mary's)
+                    R0 = 1/(z[0]*np.sqrt(2*(np.sqrt(-D2))))
+                    dR0 = R0*(K/(H0*(a0**2)) + (1 - K*(z[0]**2)/(2*D2*(a0**2)))*((-1j * np.sqrt(-D2)/a0) + H0 - dlogz[0] - K/(H0*(a0**2))))
+                
+                elif R_IC_name =='bRST':
+                    R0, dR0 = universe.get_R_i(k)
+
+                else:print('R_IC should be BD, FlatRST, MaryRST, or bRST')
+
+                return [R0, dR0]
+
+            R0, dR0 = R_IC(R_IC_name, k)
+            # Ignore this
+            # gamma = dlogz - dlogca + H/2
+            # w2 = -(ca2)*(D2-3*K)*np.exp(-2*N)
+            # w = np.sqrt(w2)
+
+
+            # zeta perfect fluid - Ignore this
+            # dR0 = R0*(1 + (1/D2)*(K/H0)*(-3*H0 - 2*dH0/H0 + 2*dlogz[0]))*((-1j * np.sqrt(-D2)/a0) + H0 - dlogz[0])
+            sol = pyoscode.solve(t, np.log(w), gamma, t[0], t[-1], R0, dR0, logw=True)
+            R.append(sol['sol'][-1])
+            # print(sol['sol'][-1])
+
+        R = np.array(R)
+        P = ks**3/2/np.pi**2*abs(R)**2 * universe.sigma**2
+
+        P = P /P[-1]*PR_analytic(ks[-1]/universe.a0, universe)
+
+        # labelval = labellist[i]
+        # ax.plot(ks/universe.a0, np.log(1e10*P), zorder=3, label="{} primordial $\Omega_K$".format(labelval),color=colorlist[i])
+        # i = i+1 
+
+        # ----
+        # This uses the CLASS package to do power spectrum fitting to give error bars figure for low values of wavenumber k
+
+        cosmo = classy.Class()
+        params = {
+                'output': 'tCl lCl',
+                'l_max_scalars': 2000,
+                'lensing': 'yes',
+                'A_s': universe.As,
+                'n_s': universe.ns,
+                'tau_reio': universe.tau,
+                'h': universe.H0/100,
+                'omega_b': universe.omegabh2,
+                'Omega_k': universe.Omega_K,
+                'omega_cdm': universe.omegach2}
+        
+        cosmo.set(params)
+        cosmo.compute()
+        cls = cosmo.lensed_cl(2000)
+        l = cls['ell'][2:]
+        cosmo_tt = l*(l+1)*cls['tt'][2:] * (1e6 * 2.7255)**2 / (2*np.pi)
+        
+        np.savetxt('nov28-5pm-correctedR.dat', np.array([
+            np.concatenate([[1e-8, 1e-7], ks/universe.a0, [1e5]]),
+            np.concatenate([[P[0], P[0]], P, [PR_analytic(1e5, universe)]])
+            ]).T)
+        curved = classy.Class()
+        params = {
+                'output': 'tCl lCl',
+                'l_max_scalars': 2000,
+                'lensing': 'yes',
+                'P_k_ini type': 'external_Pk',
+                'command': 'cat nov28-5pm-correctedR.dat',
+                'tau_reio': universe.tau,
+                'h': universe.H0/100,
+                'omega_b': universe.omegabh2,
+                'Omega_k': universe.Omega_K,
+                'omega_cdm': universe.omegach2}
+        curved.set(params)
+        curved.compute()
+        cls = curved.lensed_cl(2000)
+        l = cls['ell'][2:]
+        tt0 = l*(l+1)*cls['tt'][2:] * (1e6 * 2.7255)**2 / (2*np.pi)
+        
+        Cl = np.loadtxt('COM_PowerSpect_CMB-TT-full_R3.01.txt')
+        tt_dat = Cl[:len(cosmo_tt),1]
+        tt_err_minus = Cl[:len(cosmo_tt),2]
+        tt_err_plus = Cl[:len(cosmo_tt),3]
+        
+        def chi2(tt, lmax=-1):
+            return ((tt_dat - tt)/np.where(tt_dat<tt,tt_err_plus,tt_err_minus))**2
+        
+        chi0 = (chi2(tt0)-chi2(cosmo_tt))[:30].sum()
+   
+        ax.plot(l,tt0, zorder=3, label='$\Delta\chi^2=%.2f$' % chi0, color=colorlist[i])
+        
+        if i == 2:
+            ax.plot(l,cosmo_tt, zorder=4,label="$\Lambda$CDM", color="red")
+        i = i+1
+
+    # universe = universes[2]
+    # ax.plot(ks/universe.a0, np.log(1e10*PR_analytic(ks/universe.a0,universe)), zorder=4, label="$\Lambda$CDM", color="red")
+    # ax.set_xscale('log')
+    # ax.set_xlim(1e-4,10**(-0.3))
+    # ax.set_ylim(2, 4)
+    # ax.set_xlabel('$k\:[\mathrm{Mpc}^{-1}]$')
+    # ax.set_ylabel(r'$\log\left( 10^{10}\mathcal{P}_\mathcal{R}\right)$')
+    # ax.set_yticks([2,2.5,3,3.5,4])
+    # ax.legend()
+
+    # Plots the right hand side of the figures in paper
+    
+    ax.set_xscale('log')
+    ax.errorbar(l, tt_dat, yerr=(tt_err_minus, tt_err_plus), fmt='.', color='r', ecolor='k',marker='o',linestyle='None',capsize=0, markersize=4,zorder=2000,elinewidth=1, markeredgecolor='k')
+    ax.set_xlim(1.9,30.5)
+    ax.set_ylim(0,2500)
+    ax.set_ylabel('$\mathcal{D}_\ell^{TT}\: [\mu \mathrm{K}^2]$')
+    ax.set_xlabel('$\ell$')
+    ax.set_xticks([2,10,30])
+    ax.set_xticklabels([2,10,30])
+    ax.legend()
+    fig.set_size_inches(3.5,3.3)
+    fig.tight_layout()
+    fig.savefig(figname + '.pdf')
+

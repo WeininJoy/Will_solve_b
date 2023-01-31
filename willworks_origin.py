@@ -1,4 +1,3 @@
-import matplotlib
 import matplotlib.pyplot as plt
 from matplotlib import gridspec
 from matplotlib import patches
@@ -24,10 +23,8 @@ plt.rcParams['legend.fontsize'] = 8
 plt.rcParams['xtick.labelsize'] = 8
 plt.rcParams['ytick.labelsize'] = 8
 plt.rcParams['text.usetex'] = True
-myfont = matplotlib.font_manager.FontProperties(
-    fname=r'/home/weinin/miniconda3/lib/python3.8/site-packages/matplotlib/mpl-data/fonts/ttf/jsMath-cmbx10.ttf')
-#plt.rcParams['font.family'] = "serif"
-#plt.rcParams['font.serif'] = "cm"
+plt.rcParams['font.family'] = "serif"
+plt.rcParams['font.serif'] = "cm"
 
 
 n = 2
@@ -55,7 +52,7 @@ class PrimordialSolver(object):
 
     def calcH(self, t, y):
         N, phi, dphi, eta = y
-        H2 = (dphi**2/2 + self.V(phi))/3 - self.K*numpy.exp(-2*N)
+        H2 = (dphi**2/2 + self.V(phi))/3 - self.K*exp(-2*N)
         return numpy.sqrt(H2)
 
     def f(self, t, y):
@@ -142,7 +139,7 @@ def solve(x0, x, y):
     return float(f(x0))
 
 def create_figure(K):
-    fig = plt.figure(tight_layout=True, fontproperties=myfont)
+    fig = plt.figure(tight_layout=True)
     gs = gridspec.GridSpec(2, 3, height_ratios=[2,1])
     ax0 = fig.add_subplot(gs[0, :])
     ax0.set_xticks([])
@@ -354,7 +351,7 @@ universes =[Solver(N, V) for N in [N_i_min, N_i_med, N_i_max]]
 import pyoscode
 import tqdm
 
-labellist = ["min","med","max"]
+labellist = ["max","med","min"]
 colorlist = ['darkblue', 'steelblue', 'lightsteelblue']
 
 for figname in ['nov28-10pm-zeta-min']:
@@ -408,7 +405,8 @@ for figname in ['nov28-10pm-zeta-min']:
             # gamma = dlogz - dlogca + H/2
             # w2 = -(ca2)*(D2-3*K)*numpy.exp(-2*N)
             # w = numpy.sqrt(w2)
-            
+
+            # RST  for R and zetapf
             R0 = 1/(z[0]*numpy.sqrt(2*(numpy.sqrt(-D2))))
             dR0 = R0*(K/(H0*(a0**2)) + (1 - K*(z[0]**2)/(2*D2*(a0**2)))*((-1j * numpy.sqrt(-D2)/a0) + H0 - dlogz[0] - K/(H0*(a0**2))))
 
@@ -442,13 +440,13 @@ for figname in ['nov28-10pm-zeta-min']:
         #         'omega_b': universe.omegabh2,
         #         'Omega_k': universe.Omega_K,
         #         'omega_cdm': universe.omegach2}
-        #
+        
         # cosmo.set(params)
         # cosmo.compute()
         # cls = cosmo.lensed_cl(2000)
         # l = cls['ell'][2:]
         # cosmo_tt = l*(l+1)*cls['tt'][2:] * (1e6 * 2.7255)**2 / (2*numpy.pi)
-        #
+        
         # numpy.savetxt('nov28-5pm-correctedR.dat', numpy.array([
         #     numpy.concatenate([[1e-8, 1e-7], ks/universe.a0, [1e5]]),
         #     numpy.concatenate([[P[0], P[0]], P, [PR_analytic(1e5, universe)]])
@@ -470,20 +468,20 @@ for figname in ['nov28-10pm-zeta-min']:
         # cls = curved.lensed_cl(2000)
         # l = cls['ell'][2:]
         # tt0 = l*(l+1)*cls['tt'][2:] * (1e6 * 2.7255)**2 / (2*numpy.pi)
-        #
+        
         # Cl = numpy.loadtxt('COM_PowerSpect_CMB-TT-full_R3.01.txt')
         # tt_dat = Cl[:len(cosmo_tt),1]
         # tt_err_minus = Cl[:len(cosmo_tt),2]
         # tt_err_plus = Cl[:len(cosmo_tt),3]
-        #
+        
         # def chi2(tt, lmax=-1):
         #     return ((tt_dat - tt)/numpy.where(tt_dat<tt,tt_err_plus,tt_err_minus))**2
-        #
+        
         # chi0 = (chi2(tt0)-chi2(cosmo_tt))[:30].sum()
-        #
+        
         # ax = axes[1]
         # ax.plot(l,tt0, zorder=3, label='$\Delta\chi^2=%.2f$' % chi0, color=colorlist[i])
-        #
+        
         # if i == 2:
         #     ax.plot(l,cosmo_tt, zorder=4,label="$\Lambda$CDM", color="red")
         # i = i+1
