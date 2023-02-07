@@ -34,20 +34,20 @@ myfont = matplotlib.font_manager.FontProperties(
 #plt.rcParams['font.serif'] = "cm"
 
 
+# n = 2
+# V = lambda phi: phi**2/2
+# V.d = lambda phi: phi
+# V.dd = lambda phi: 1
+
 n = 2
-V = lambda phi: phi**2/2
-V.d = lambda phi: phi
-V.dd = lambda phi: 1
+V = lambda phi: (1-numpy.exp(-numpy.sqrt(2./3)*phi))**2
+V.d = lambda phi: 2*(1-numpy.exp(-numpy.sqrt(2./3)*phi))* numpy.sqrt(2./3)*numpy.exp(-numpy.sqrt(2./3)*phi)
+V.dd = lambda phi: 8./3*numpy.exp(-2*numpy.sqrt(2./3)*phi) - 4./3*numpy.exp(-numpy.sqrt(2./3)*phi)
 
-#n = 2
-#V = lambda phi: (1-numpy.exp(-numpy.sqrt(2./3)*phi))**2
-#V.d = lambda phi: 2*(1-numpy.exp(-numpy.sqrt(2./3)*phi))* numpy.sqrt(2./3)*numpy.exp(-numpy.sqrt(2./3)*phi)
-#V.dd = lambda phi: 8./3*numpy.exp(-2*numpy.sqrt(2./3)*phi) - 4./3*numpy.exp(-numpy.sqrt(2./3)*phi)
-
-n = 4./3
-V = lambda phi: numpy.abs(phi)**n
-V.d = lambda phi: n * numpy.sign(phi)*numpy.abs(phi)**(n-1)
-V.dd = lambda phi: n * (n-1) *numpy.abs(phi)**(n-2)
+# n = 4./3
+# V = lambda phi: numpy.abs(phi)**n
+# V.d = lambda phi: n * numpy.sign(phi)*numpy.abs(phi)**(n-1)
+# V.dd = lambda phi: n * (n-1) *numpy.abs(phi)**(n-2)
 
 V.w = (n-2)/(n+2)
 
@@ -420,7 +420,7 @@ def create_figure(K):
     return fig, ax0, ax1, ax2, ax3, ax4
 
 class Solver_b(object):
-    def __init__(self, N_i, V, H0=64.03, Omega_m=0.3453, omegabh2=0.022509, omegach2=0.11839, tau=0.0515, Omega_K=-0.0092, logA=3.0336, ns=0.9699, z=1089.61):
+    def __init__(self, N_i, V, H0=64.03, Omega_m=0.3453, omegabh2=0.022509, omegach2=0.11839, tau=0.0515, Omega_K=-0.0092, logA=3.0336, ns=0.96535, z=1089.61): # ns=0.9699
         # Initialise late-time parameters
         self.H0 = H0
         self.omegach2 = omegach2
@@ -569,8 +569,9 @@ class R_func(object):
 
 
 class Solver(object):
-    def __init__(self, N_i, V, H0=64.03, Omega_m=0.3453, omegabh2=0.022509, omegach2=0.11839, tau=0.0515, Omega_K=-0.0092, logA=3.0336, ns=0.9699, z=1089.61):
+    def __init__(self, n, N_i, V, H0=64.03 , omegabh2=0.022509, omegach2=0.11839, Omega_K=-0.0092, Omega_m=0.3453, tau=0.0515, logA=3.0336, ns=0.96535, z=1089.61): # ns=0.9699
         # Initialise late-time parameters
+        self.n = n
         self.H0 = H0
         self.omegach2 = omegach2
         self.omegabh2 = omegabh2
@@ -594,7 +595,7 @@ class Solver(object):
         self.N_i = N_i
         self.V = V
         self.phi_i = self.PrimordialSolver.find_phi_i(self.N_i, self.logaH, self.ns)
-        self.Nb_i, self.dNb_i = self.IC_b_Solver.get_b_IC()
+        # self.Nb_i, self.dNb_i = self.IC_b_Solver.get_b_IC()
 
         # Determine the mass
         _, As_, r = self.PrimordialSolver.find_ns_As_r(self.N_i, self.phi_i, self.logaH)
@@ -666,12 +667,12 @@ class Solver(object):
         Omega = -2*(numpy.log(H)+sol.y[0])
         eta = sol.y[3,-1]
 
-        N1 = root_scalar(lambda N_: self.Omega_late_time(N_)[0] - (Omega[-1] + (1+3*V.w)*(N_-N[-1])), bracket=[-120,numpy.log(self.a0)]).root
-        Omega1 = self.Omega_late_time(N1)[0]
+        # N1 = root_scalar(lambda N_: self.Omega_late_time(N_)[0] - (Omega[-1] + (1+3*V.w)*(N_-N[-1])), bracket=[-120,numpy.log(self.a0)]).root
+        # Omega1 = self.Omega_late_time(N1)[0]
 
-        x = numpy.linspace(0,1,1000)
-        N = numpy.concatenate([N, N1*x + N[-1]*(1-x)])
-        Omega = numpy.concatenate([Omega, Omega1*x + Omega[-1]*(1-x)])
+        # x = numpy.linspace(0,1,1000)
+        # N = numpy.concatenate([N, N1*x + N[-1]*(1-x)])
+        # Omega = numpy.concatenate([Omega, Omega1*x + Omega[-1]*(1-x)])
 
         return N, Omega, eta
 
@@ -688,7 +689,6 @@ class Solver(object):
         eta_reheating = self.reheating()[2]
         eta_pre_cmb = scipy.integrate.quad(lambda N: numpy.exp(self.Omega_late_time(N)[0]*0.5), -numpy.inf, numpy.log(self.a0/(1+self.z)))[0]
         eta_post_cmb = scipy.integrate.quad(lambda N: numpy.exp(self.Omega_late_time(N)[0]*0.5), numpy.log(self.a0/(1+self.z)),numpy.log(self.a0))[0]
-
         return (eta_pre+eta_inflating + eta_reheating + eta_pre_cmb)/eta_post_cmb
 
     def approx_PR(self):
@@ -703,36 +703,77 @@ class Solver(object):
     def get_R_i(self, k): 
         R_i, dR_i = self.R_func.get_R_IC(k, self.PrimordialSolver.K, self.phi_i, self.N_i, self.Nb_i, self.dNb_i)
         return [R_i, dR_i]
+    
+    def plot_aH(self):
+        sol = self.PrimordialSolver.solve_post(self.N_i, self.phi_i, 0.1)
+        N_late_time = numpy.linspace(self.reheating()[0][-1], numpy.log(self.a0/(1+self.z)), 1000)
+        Omega_late_time = self.Omega_late_time(N_late_time)
+        
+        # plt.plot(self.pre_inflation()[0], self.pre_inflation()[1],label="{} primordial $\Omega_K$".format(labellist[self.n]),color=colorlist[self.n])
+        plt.plot(self.pre_inflation()[0], self.pre_inflation()[1],label="ns={}".format(self.ns),color=colorlist[self.n])
+        plt.plot(self.inflation()[0], self.inflation()[1], color=colorlist[self.n])
+        plt.plot(self.reheating()[0], self.reheating()[1], color=colorlist[self.n])
+        plt.plot(N_late_time, Omega_late_time, color=colorlist[self.n])
+        return 0
+        # return Omega_late_time[0] - self.reheating()[1][-1]
+    
 
 
 def eta_frac(N_i):
-    #print(N_i)
+    print('N_i='+str(N_i))
     try:
-        return Solver(N_i, V).eta_frac() - 1
+        return Solver(0, N_i, V).eta_frac() - 1.0
     except ValueError:
         return -1
-
 
 
 import pyoscode
 import tqdm
 
+## find ns
+# def find_ns(ns):
+#     #print(N_i)
+#     try:
+#         return Solver(0, N_i, V, ns).plot_aH() 
+#     except ValueError:
+#         return -1
+
+# ns = root_scalar(find_ns, bracket=[0.965, 0.966]).root
+# print('ns='+str(ns))
+
+
 # Maximum N_i -- as flat as it can be whilst solving horizon problem
 # print(eta_frac(-1))
-# N_i = root_scalar(eta_frac, bracket=[-1, 1]).root
+# N_i = root_scalar(eta_frac, bracket=[1, 3]).root
 # N_i_max = N_i
-# N_i_min = -1.5
+# N_i_min = 0.35
 # N_i_med = (N_i_max + N_i_min)/2
 
-N_i_min, N_i_med, N_i_max= -1.5, -0.4676751301973933, 0.5646497396052134
-print('N_i_min, N_i_med, N_i_max= '+str(N_i_min)+', '+str(N_i_med)+', '+str(N_i_max))
+# N_i_min, N_i_med, N_i_max= -1.5, -0.4676751301973933, 0.5646497396052134  # V=phi^4/3, ns=0.9699
+# N_i_min, N_i_med, N_i_max= 0.35, 1.315024545227802, 2.280049090455604 # V=Starobinsky, ns=0.96535
+# print('N_i_min, N_i_med, N_i_max= '+str(N_i_min)+', '+str(N_i_med)+', '+str(N_i_max))
 
-universes =[Solver(N, V) for N in [N_i_min, N_i_med, N_i_max]]
-labellist = ["max","med","min"]
-colorlist = ['darkblue', 'steelblue', 'lightsteelblue']
-# universes = [Solver(N_i_med, V)]
-# labellist = ["med"]
-# colorlist = ['darkblue']
+
+N_i = 0.5
+ns_list = [0.96, 0.97, 0.98]
+labellist = ["med"]
+colorlist =  ['darkblue', 'steelblue', 'lightsteelblue']
+for n in range(len(ns_list)):
+    universe = Solver(n, N_i, V, ns_list[n])
+    universe.plot_aH()
+plt.legend()
+plt.show()
+
+
+# # labellist = ["max","med","min"]
+# # colorlist = ['darkblue', 'steelblue', 'lightsteelblue']
+
+# for universe in universes:
+#     universe.plot_aH()
+# plt.legend()
+# plt.show()
+
+
 
 ## total PPS by A,B
 # N_i_list = [0.5646497396052134, 0.3, 0.0, -0.4676751301973933, -0.8, -1, -1.2]
@@ -742,7 +783,7 @@ colorlist = ['darkblue', 'steelblue', 'lightsteelblue']
 # labellist = ['0.565', '0.3', '0.0', '-0.468', '-0.8', '-1', '-1.2']
 # colorlist = ['red', 'sandybrown', 'gold', 'darkkhaki', 'chartreuse', 'deepskyblue', 'blue']
 
-
+"""
 for figname in ['jan22-8am-CMB-diffNi-actual-b-will']:
     ks = numpy.arange(3,25000)
 
@@ -849,17 +890,17 @@ for figname in ['jan22-8am-CMB-diffNi-actual-b-will']:
             ax.plot(l,cosmo_tt, zorder=4,label="$\Lambda$CDM", color="red")
         i = i+1
     
-    """
-    universe = universes[1]
-    ax.plot(ks/universe.a0, numpy.log(1e10*PR_analytic(ks/universe.a0,universe)), zorder=4, label="$\Lambda$CDM", color="red")
-    ax.set_xscale('log')
-    ax.set_xlim(1e-4,10**(-0.3))
-    ax.set_ylim(2, 4)
-    ax.set_xlabel('$k\:[\mathrm{Mpc}^{-1}]$')
-    ax.set_ylabel(r'$\log\left( 10^{10}\mathcal{P}_\mathcal{R}\right)$')
-    ax.set_yticks([2,2.5,3,3.5,4])
-    ax.legend(loc = 'lower right')
-    """
+   
+    # universe = universes[1]
+    # ax.plot(ks/universe.a0, numpy.log(1e10*PR_analytic(ks/universe.a0,universe)), zorder=4, label="$\Lambda$CDM", color="red")
+    # ax.set_xscale('log')
+    # ax.set_xlim(1e-4,10**(-0.3))
+    # ax.set_ylim(2, 4)
+    # ax.set_xlabel('$k\:[\mathrm{Mpc}^{-1}]$')
+    # ax.set_ylabel(r'$\log\left( 10^{10}\mathcal{P}_\mathcal{R}\right)$')
+    # ax.set_yticks([2,2.5,3,3.5,4])
+    # ax.legend(loc = 'lower right')
+    
 
     # Plots the right hand side of the figures in paper
     
@@ -876,7 +917,7 @@ for figname in ['jan22-8am-CMB-diffNi-actual-b-will']:
     fig.tight_layout()
     fig.savefig(figname + '.pdf')
 """
-
+"""
 ### Make the PPS figure with different R_IC
 
 labellist = ["max","med","min"]

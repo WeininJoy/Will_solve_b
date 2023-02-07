@@ -18,9 +18,9 @@ m_p = 1.0 # reduced planck mass = \sqrt(c*hbar/8/pi/G) ??
 
 # constants
 V0 = m_p**4
-N_i_origin_list = [11.713, 12.7, 13.6] # N_paper = ln(a/lp) = 10.0
-phi_i_list = [10.44997084519851, 5.9, 5.86751537]
-sigma_list = [1.1580032025900702e-05, 1.14345473e-05, 1.14278051e-05]
+N_i_origin_list = [11.713, 11.72, 11.73] # N_paper = ln(a/lp) = 10.0
+phi_i_list = [10.44997084519851, 9.988837324387065, 7.250335673539723]
+sigma_list = [1.1580032025900702e-05, 1.1500316486097475e-05, 1.1469857859311461e-05]
 N_end_cons = 70.0
 
 # Cross horizon (k=0.05 Mpc^-1)
@@ -74,7 +74,7 @@ class PrimordialSolver(object):
         n_eta = ddH/(H*dH) - 2.*dH/H**2
         ns = 1 - 2.*n_eps - n_eta
         As = H**4/dphi**2/(2*np.pi)**2 * sigma**2
-
+        
         return ns, As
 
     def find_phi0_sigma(self, N_i_origin, logaH):
@@ -304,8 +304,11 @@ class IC_b_Solver(object):
         # else: 
         #     print('n should be 0, 1, or 2')
 
-        sol_inf = solve_ivp(self.f_b, [self.IC_SR()[0], 0.0], self.IC_SR()[1], method='Radau', d=-1)
-        return [sol_inf.y[2][-1], sol_inf.y[3][-1]]
+        # sol_inf = solve_ivp(self.f_b, [self.IC_SR()[0], 0.0], self.IC_SR()[1], method='Radau', d=-1)
+        # return [sol_inf.y[2][-1], sol_inf.y[3][-1]]
+        sol_KD = self.PrimordialSolver.solve(self.N_i, self.phi_i, d=-1)
+        dN_i = self.PrimordialSolver.calcH(sol_KD.t[0], sol_KD.y[:,0])
+        return [self.N_i, dN_i]
         
 
 class Inflating(object):
@@ -574,12 +577,12 @@ import tqdm
 # labellist = ["max","med","min"]
 # colorlist = ['darkblue', 'steelblue', 'lightsteelblue']
 
-# universes = [Solver(n, N_i_origin_list[n], V) for n in range(len(N_i_origin_list))]
-# labellist = ["max", "med", "min"]
-# colorlist = ['darkblue', 'steelblue', 'lightsteelblue']
+universes = [Solver(n, N_i_origin_list[n], V) for n in range(len(N_i_origin_list))]
+labellist = ["max", "med", "min"]
+colorlist = ['darkblue', 'steelblue', 'lightsteelblue']
 
-"""
-for figname in ['PPS-diffIC-abmatch-Ni_min']:
+
+for figname in ['PPS-diffNi-ab_t0-small_Ni']:
     ks = np.arange(3,25000)
 
     def PR_analytic(k, s):
@@ -613,8 +616,8 @@ for figname in ['PPS-diffIC-abmatch-Ni_min']:
         P = P /P[-1]*PR_analytic(ks[-1]/universe.a0, universe)
 
         labelval = labellist[i]
-        # ax.plot(ks/universe.a0, np.log(1e10*P), zorder=3, label="{} primordial $\Omega_K$".format(labelval),color=colorlist[i])
-        ax.plot(ks/universe.a0, np.log(1e10*P), zorder=3, label="$a&b$ match at {} ".format(labelval),color=colorlist[i])
+        ax.plot(ks/universe.a0, np.log(1e10*P), zorder=3, label="{} primordial $\Omega_K$".format(labelval),color=colorlist[i])
+        # ax.plot(ks/universe.a0, np.log(1e10*P), zorder=3, label="$a&b$ match at {} ".format(labelval),color=colorlist[i])
         i = i+1
 
         # ----
@@ -698,13 +701,13 @@ for figname in ['PPS-diffIC-abmatch-Ni_min']:
     # ax.set_xlabel('$\ell$')
     # ax.set_xticks([2,10,30])
     # ax.set_xticklabels([2,10,30])
-    # ax.legend()
+    ax.legend()
     fig.set_size_inches(3.5,3.3)
     fig.tight_layout()
     fig.savefig(figname + '.pdf')
 
-"""
 
+"""
 ### Make the PPS figure with different R_IC
 
 colorlist = ['darkblue', 'steelblue', 'lightsteelblue', 'g']
@@ -888,3 +891,4 @@ for figname in ['CMB-diffIC-Ni_max']:
     fig.tight_layout()
     fig.savefig(figname + '.pdf')
 
+"""
