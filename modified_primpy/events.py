@@ -90,13 +90,12 @@ class InflationEvent(Event):
             return self.direction
         return self.equations.inflating(x, y) - self.value
 
-class SlowRowEvent(object):
+class SlowRowEvent(Event):
     """Track slow row start/end."""
 
     def __init__(self, equations, direction=0, terminal=False, value=-0.99, **kwargs):
-        super(InflationEvent, self).__init__(equations, direction, terminal, value)
+        super(SlowRowEvent, self).__init__(equations, direction, terminal, value)
         self.name = 'SlowRow_dir%d_term%d' % (self.direction, self.terminal)
-        self.t_i = kwargs.pop('t_i', None)
 
     def __call__(self, x, y):
         """Root of state parameter: `p/rho."""

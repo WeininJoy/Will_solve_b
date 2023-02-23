@@ -2,7 +2,7 @@
 """:mod:`primpy.time.perturbations`: curvature perturbations with respect to time `t`."""
 import numpy as np
 from primpy.perturbations import Perturbation, ScalarMode, TensorMode
-from primpy.time import ic_rst_b
+from primpy.time.ic_rst_b import IC_RST_b
 
 
 class PerturbationT(Perturbation):
@@ -63,11 +63,12 @@ class ScalarModeT(ScalarMode):
             return np.sqrt(frequency2), damping
         else:
             return np.sqrt(frequency2 + 0j), damping
+    
 
     def get_vacuum_ic_RST(self):
         """Get initial conditions for scalar modes for RST vacuum w.r.t. cosmic time `t`."""
-        ic_rst_b.__init__(background=self.background)
-        Rk_i, dRk_i = ic_rst_b.get_R_IC(self.k)
+        IC_b = IC_RST_b(self.background)
+        Rk_i, dRk_i = IC_b.get_R_IC(self.k)
         return Rk_i, dRk_i
 
 

@@ -12,37 +12,41 @@ class SlowRowIC(object):
         self.background = background
         self.equations = equations
 
-    def __call__(self, y0):
+    def __call__(self, y0, **ivp_kwargs):
     
         # #########################################################################
         # Set background equations of inflation for `N`, `phi` and `dphi`.
         # #########################################################################
-        SR_start = self.background.N_events['SlowRow_dir+1_termFalse']
-        self.x_ini = SR_start.t
-        self.x_end = 1
-        V0 = self.equations.potential.V(SR_start.phi)
-        dNdt0 = np.sqrt((SR_start.dphidt**2 /2 + V0) /3 - self.background.K * np.exp(-2*SR_start.N))
-        y0[self.equations.idx['dphidt']] = SR_start.dphidt
-        y0[self.equations.idx['N']] = SR_start.N
-        y0[self.equations.idx['phi']] = SR_start.phi
-        y0[self.equations.idx['Nb']] = SR_start.N
-        y0[self.equations.idx['dNbdt']] = dNdt0
+        SR_key = 'SlowRow_dir1_term0'
+        self.x_ini = self.background.t_events[SR_key][0]
+        self.x_end = self.background.t[0]
+
+        SR_phi, SR_dphidt, SR_N, SR_eta = self.background.y_events[SR_key][0]
+        SR_V = self.background.potential.V(SR_phi)
+        SR_dNdt = np.sqrt((SR_dphidt**2 /2 + SR_V) /3 - self.background.K * np.exp(-2*SR_N))
+        y0[self.equations.idx['phi']] = SR_phi
+        y0[self.equations.idx['dphidt']] = SR_dphidt
+        y0[self.equations.idx['N']] = SR_N
+        y0[self.equations.idx['Nb']] = SR_N
+        y0[self.equations.idx['dNbdt']] = SR_dNdt
 
 
-class ic_rst_b(object):
+class IC_RST_b(object):
     def __init__(self, backgound, cs=1):
         self.backgound = backgound  # the equation should have track_b=True
-        self.V = self.backgound.potential
+        self.V = self.backgound.potential.V
+        self.dV = self.backgound.potential.dV
         self.K = self.backgound.K
         self.cs = cs
-        
-        equations = InflationEquations(K=self.K, potential=self.V, track_eta=False, track_b=True)
+
+        equations = InflationEquations(K=self.K, potential=self.backgound.potential, track_eta=False, track_b=True)
         """get initial condition of Nb and dNbdt"""
         ic_SR = SlowRowIC(self.backgound, equations)
         ev = [InflationEvent(equations, -1, terminal=True)]   # end at inflation start
         backwards = solve(ic=ic_SR, events=ev)
         self.Nb_i = backwards.Nb[-1]
         self.dNbdt_i = backwards.dNbdt[-1]
+
 
     # #########################################################################
     # Functions needed for defining IC of R and dRdt
@@ -97,7 +101,7 @@ class ic_rst_b(object):
         dda = np.exp(N) * (ddN + self.N_dot_IC(K, phi, N)**2)
 
         zeta_IC = self.zeta_IC(self.phi_dot_IC(phi), b, db, k, K)
-        zeta_dot_IC = self.zeta_dot_IC(self.phi_dot_IC(phi), - 3.0*self.N_dot_IC(K, phi, N)*self.phi_dot_IC(phi) - self.V.d(phi), np.exp(N), np.exp(N)*self.N_dot_IC(K, phi, N), b, db, ddb, k, K)
+        zeta_dot_IC = self.zeta_dot_IC(self.phi_dot_IC(phi), - 3.0*self.N_dot_IC(K, phi, N)*self.phi_dot_IC(phi) - self.dV(phi), np.exp(N), np.exp(N)*self.N_dot_IC(K, phi, N), b, db, ddb, k, K)
         R_IC = self.R_PPS(k, K, zeta_IC, zeta_dot_IC, np.exp(N), np.exp(N)*self.N_dot_IC(K, phi, N), dda, b, db, ddb)
         R_dot_IC =  self.R_dot_PPS(k, K, zeta_IC, zeta_dot_IC, self.phi_dot_IC(phi), np.exp(N), np.exp(N)*self.N_dot_IC(K, phi, N), dda, b, db, ddb)
         
